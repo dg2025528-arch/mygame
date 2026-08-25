@@ -1,94 +1,678 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>벽돌 깨기 게임</title>
-    <link rel="stylesheet" href="style.css">
-</head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>NEON BREAK — 벽돌깨기</title>
+<meta name="description" content="브라우저에서 즐기는 레트로 네온 벽돌깨기 게임">
+<meta name="theme-color" content="#0b0e17">
+<link rel="preconnect" href="https://fonts.googleapis.com"&gt;
+<link rel="preconnect" href="https://fonts.gstatic.com&quot; crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Grotesk:wght@400;500;600;700&display=swap&quot; rel="stylesheet">
+<style>
+  :root{
+    --bg-0:#0b0e17;
+    --bg-1:#11162a;
+    --cyan:#4ce0d2;
+    --magenta:#ff4d8d;
+    --amber:#ffc857;
+    --ink:#f1f5f9;
+    --ink-dim:#8a93ad;
+    --line: rgba(241,245,249,0.08);
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
 
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+
+  html,body{
+    margin:0; padding:0; height:100%;
+    background:
+      radial-gradient(1200px 700px at 15% -10%, rgba(76,224,210,0.10), transparent 60%),
+      radial-gradient(1000px 600px at 105% 10%, rgba(255,77,141,0.10), transparent 55%),
+      var(--bg-0);
+    color:var(--ink);
+    font-family:'Space Grotesk', system-ui, sans-serif;
+    overflow:hidden;
+    overscroll-behavior:none;
+    touch-action:none;
+    user-select:none;
+    -webkit-user-select:none;
+  }
+
+  .stage{
+    position:fixed; inset:0;
+    display:flex; flex-direction:column;
+    padding-top:var(--safe-top);
+    padding-bottom:var(--safe-bottom);
+  }
+
+  /* ---------- HUD ---------- */
+  .hud{
+    display:flex; align-items:center; justify-content:space-between;
+    gap:12px;
+    padding:14px 18px 10px;
+    flex-shrink:0;
+  }
+  .brand{
+    font-family:'Press Start 2P', monospace;
+    font-size:12px;
+    letter-spacing:1px;
+    color:var(--ink);
+    display:flex; align-items:center; gap:8px;
+    white-space:nowrap;
+  }
+  .brand .dot{width:8px;height:8px;border-radius:50%;background:var(--magenta); box-shadow:0 0 10px var(--magenta);}
+  .stats{
+    display:flex; gap:16px; align-items:center;
+    font-family:'Press Start 2P', monospace;
+    font-size:10px;
+  }
+  .stat{display:flex; flex-direction:column; gap:4px; align-items:flex-end;}
+  .stat .label{color:var(--ink-dim); font-size:8px; letter-spacing:1px;}
+  .stat .value{color:var(--cyan);}
+  .stat.lives .value{color:var(--amber);}
+  .iconbtn{
+    width:34px; height:34px; border-radius:9px;
+    border:1px solid var(--line);
+    background:rgba(241,245,249,0.04);
+    color:var(--ink);
+    display:flex; align-items:center; justify-content:center;
+    font-size:16px; line-height:1;
+    cursor:pointer;
+  }
+  .iconbtn:active{background:rgba(241,245,249,0.12);}
+
+  /* ---------- Canvas area ---------- */
+  .field{
+    position:relative;
+    flex:1;
+    margin:0 12px 12px;
+    border-radius:18px;
+    background:
+      linear-gradient(180deg, rgba(76,224,210,0.05), transparent 30%),
+      var(--bg-1);
+    border:1px solid var(--line);
+    overflow:hidden;
+    box-shadow: inset 0 0 60px rgba(0,0,0,0.35);
+  }
+  canvas{
+    position:absolute; inset:0;
+    display:block;
+    width:100%; height:100%;
+    touch-action:none;
+  }
+
+  /* ---------- Overlays ---------- */
+  .overlay{
+    position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    background:rgba(11,14,23,0.82);
+    backdrop-filter: blur(3px);
+    z-index:5;
+    padding:24px;
+  }
+  .overlay.hidden{display:none;}
+  .card{
+    text-align:center;
+    max-width:340px;
+  }
+  .card h1{
+    font-family:'Press Start 2P', monospace;
+    font-size:20px;
+    line-height:1.6;
+    margin:0 0 14px;
+    color:var(--ink);
+    text-shadow:0 0 18px rgba(76,224,210,0.5);
+  }
+  .card h1 .hi{color:var(--magenta); text-shadow:0 0 18px rgba(255,77,141,0.6);}
+  .card p{
+    color:var(--ink-dim);
+    font-size:14px;
+    line-height:1.6;
+    margin:0 0 22px;
+  }
+  .card .big-score{
+    font-family:'Press Start 2P', monospace;
+    font-size:28px;
+    color:var(--amber);
+    margin:0 0 22px;
+    text-shadow:0 0 18px rgba(255,200,87,0.5);
+  }
+  .btn{
+    font-family:'Press Start 2P', monospace;
+    font-size:12px;
+    letter-spacing:1px;
+    color:#0b0e17;
+    background:linear-gradient(135deg, var(--cyan), #7ef0e4);
+    border:none;
+    padding:14px 26px;
+    border-radius:12px;
+    cursor:pointer;
+    box-shadow:0 8px 24px rgba(76,224,210,0.25);
+  }
+  .btn:active{transform:translateY(1px);}
+  .hint{
+    margin-top:16px;
+    font-size:12px;
+    color:var(--ink-dim);
+  }
+  .kbd{
+    display:inline-block;
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:1px 6px;
+    font-family:'Press Start 2P', monospace;
+    font-size:9px;
+    color:var(--ink);
+  }
+
+  /* mobile-only hint text swap */
+  .touch-only{display:none;}
+  .no-touch-only{display:inline;}
+  @media (hover:none) and (pointer:coarse){
+    .touch-only{display:inline;}
+    .no-touch-only{display:none;}
+  }
+
+  @media (max-width:520px){
+    .brand{font-size:10px;}
+    .stats{font-size:9px; gap:12px;}
+    .card h1{font-size:16px;}
+    .card .big-score{font-size:22px;}
+  }
+</style>
+</head>
 <body>
 
-<div class="game-container">
-
-    <h1>🧱 벽돌깨기</h1>
-
-    <div class="menu">
-        <button id="startBtn">게임 시작</button>
-        <button id="howBtn">게임 방법</button>
+<div class="stage">
+  <div class="hud">
+    <div class="brand"><span class="dot"></span>NEON BREAK</div>
+    <div class="stats">
+      <div class="stat"><span class="label">LEVEL</span><span class="value" id="levelVal">1</span></div>
+      <div class="stat"><span class="label">SCORE</span><span class="value" id="scoreVal">0</span></div>
+      <div class="stat lives"><span class="label">LIVES</span><span class="value" id="livesVal">3</span></div>
     </div>
+    <button class="iconbtn" id="pauseBtn" aria-label="일시정지">❚❚</button>
+  </div>
 
-    <div class="game-area">
+  <div class="field" id="field">
+    <canvas id="game"></canvas>
 
-        <canvas id="gameCanvas" width="700" height="500"></canvas>
-
-        <div class="status">
-            <div>
-                <span>점수</span>
-                <strong id="score">0</strong>
-            </div>
-
-            <div>
-                <span>목숨</span>
-                <strong id="lives">3</strong>
-            </div>
-
-            <div>
-                <span>최고점수</span>
-                <strong id="highScore">0</strong>
-            </div>
+    <div class="overlay" id="startOverlay">
+      <div class="card">
+        <h1>NEON<br><span class="hi">BREAK</span></h1>
+        <p>패들을 움직여 공을 튕기고<br>모든 벽돌을 깨보세요.</p>
+        <button class="btn" id="startBtn">시작하기</button>
+        <div class="hint">
+          <span class="no-touch-only">마우스 이동 또는 <span class="kbd">←</span> <span class="kbd">→</span></span>
+          <span class="touch-only">화면을 좌우로 드래그해서 조작</span>
         </div>
-
+      </div>
     </div>
 
-    <div class="mobile-controls">
-        <button id="leftBtn">◀</button>
-        <button id="rightBtn">▶</button>
+    <div class="overlay hidden" id="pauseOverlay">
+      <div class="card">
+        <h1>일시정지</h1>
+        <button class="btn" id="resumeBtn">계속하기</button>
+      </div>
     </div>
 
+    <div class="overlay hidden" id="loseOverlay">
+      <div class="card">
+        <h1><span class="hi">GAME</span> OVER</h1>
+        <div class="big-score" id="finalScore">0</div>
+        <button class="btn" id="retryBtn">다시하기</button>
+      </div>
+    </div>
+
+    <div class="overlay hidden" id="winOverlay">
+      <div class="card">
+        <h1>LEVEL <span class="hi">CLEAR</span></h1>
+        <div class="big-score" id="clearScore">0</div>
+        <button class="btn" id="nextBtn">다음 레벨</button>
+      </div>
+    </div>
+  </div>
 </div>
 
-<!-- 게임 방법 -->
-<div id="howModal" class="modal">
-    <div class="modal-content">
-        <h2>🎮 게임 방법</h2>
+<script>
+(function(){
+  "use strict";
 
-        <p>공을 튕겨서 위쪽의 벽돌을 모두 깨세요!</p>
+  // ---------- Setup ----------
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const field = document.getElementById('field');
 
-        <p>🖥️ 컴퓨터</p>
-        <p>← → 방향키로 막대를 움직입니다.</p>
+  const scoreVal = document.getElementById('scoreVal');
+  const livesVal = document.getElementById('livesVal');
+  const levelVal = document.getElementById('levelVal');
 
-        <p>📱 모바일</p>
-        <p>화면 아래의 ◀ ▶ 버튼으로 움직입니다.</p>
+  const startOverlay = document.getElementById('startOverlay');
+  const pauseOverlay  = document.getElementById('pauseOverlay');
+  const loseOverlay   = document.getElementById('loseOverlay');
+  const winOverlay    = document.getElementById('winOverlay');
 
-        <p>❤️ 목숨은 3개입니다.</p>
-        <p>공을 놓치면 목숨이 하나 줄어듭니다.</p>
+  const startBtn  = document.getElementById('startBtn');
+  const resumeBtn = document.getElementById('resumeBtn');
+  const retryBtn  = document.getElementById('retryBtn');
+  const nextBtn   = document.getElementById('nextBtn');
+  const pauseBtn  = document.getElementById('pauseBtn');
 
-        <button id="closeHowBtn">닫기</button>
-    </div>
-</div>
+  const finalScore = document.getElementById('finalScore');
+  const clearScore = document.getElementById('clearScore');
 
-<!-- 게임 종료 -->
-<div id="gameOverModal" class="modal">
-    <div class="modal-content">
-        <h2>💥 게임 오버!</h2>
-        <p id="finalScore">점수: 0</p>
-        <button id="restartBtn">다시 시작</button>
-    </div>
-</div>
+  const BRICK_PALETTE = ['#4ce0d2', '#7ef0e4', '#ffc857', '#ff4d8d', '#c084fc'];
 
-<!-- 게임 클리어 -->
-<div id="clearModal" class="modal">
-    <div class="modal-content">
-        <h2>🎉 게임 클리어!</h2>
-        <p>모든 벽돌을 깨셨습니다!</p>
-        <p id="clearScore">점수: 0</p>
+  let DPR = Math.min(window.devicePixelRatio || 1, 2);
+  let W = 0, H = 0; // CSS px
 
-        <button id="clearRestartBtn">다시 하기</button>
-    </div>
-</div>
+  let state = 'start'; // start | running | paused | lose | win
+  let score = 0, lives = 3, level = 1;
 
-<script src="game.js"></script>
+  let paddle, ball, bricks, particles;
 
+  function layout(){
+    const rect = field.getBoundingClientRect();
+    W = rect.width;
+    H = rect.height;
+    canvas.width = Math.floor(W * DPR);
+    canvas.height = Math.floor(H * DPR);
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+  }
+
+  function makePaddle(){
+    const w = Math.max(70, Math.min(120, W * 0.22));
+    return {
+      w, h: 14,
+      x: (W - w) / 2,
+      y: H - 34,
+      speed: 0
+    };
+  }
+
+  function makeBall(){
+    const speed = 4.6 + (level - 1) * 0.35;
+    return {
+      r: 7,
+      x: W/2,
+      y: H - 60,
+      vx: speed * (Math.random() > 0.5 ? 1 : -1) * 0.6,
+      vy: -speed,
+      stuck: true,
+      trail: []
+    };
+  }
+
+  function makeBricks(){
+    const rows = Math.min(5 + Math.floor((level-1)/1), 8);
+    const cols = W < 420 ? 6 : (W < 700 ? 8 : 10);
+    const pad = 6;
+    const top = 16;
+    const side = 10;
+    const bw = (W - side*2 - pad*(cols-1)) / cols;
+    const bh = 20;
+    const list = [];
+    for(let r=0;r<rows;r++){
+      for(let c=0;c<cols;c++){
+        // skip a few bricks near the top for variety on higher levels
+        if(level > 1 && (r+c) % 11 === 0 && r > 0) continue;
+        list.push({
+          x: side + c*(bw+pad),
+          y: top + r*(bh+pad),
+          w: bw, h: bh,
+          color: BRICK_PALETTE[r % BRICK_PALETTE.length],
+          hp: (level > 2 && r < 2) ? 2 : 1,
+          alive: true
+        });
+      }
+    }
+    return list;
+  }
+
+  function resetLevel(keepScore){
+    paddle = makePaddle();
+    ball = makeBall();
+    bricks = makeBricks();
+    particles = [];
+    if(!keepScore){ score = 0; lives = 3; level = 1; }
+    updateHud();
+  }
+
+  function updateHud(){
+    scoreVal.textContent = score;
+    livesVal.textContent = lives;
+    levelVal.textContent = level;
+  }
+
+  // ---------- Input ----------
+  let pointerActive = false;
+  let targetX = null;
+
+  function setPaddleFromClientX(clientX){
+    const rect = canvas.getBoundingClientRect();
+    const x = clientX - rect.left;
+    targetX = x - paddle.w/2;
+  }
+
+  canvas.addEventListener('pointerdown', (e) => {
+    pointerActive = true;
+    setPaddleFromClientX(e.clientX);
+    if(ball && ball.stuck && state === 'running'){
+      launchBall();
+    }
+  });
+  window.addEventListener('pointermove', (e) => {
+    if(!pointerActive && e.pointerType === 'mouse'){
+      setPaddleFromClientX(e.clientX);
+      return;
+    }
+    if(pointerActive) setPaddleFromClientX(e.clientX);
+  });
+  window.addEventListener('pointerup', () => { pointerActive = false; });
+
+  const keys = {left:false, right:false};
+  window.addEventListener('keydown', (e) => {
+    if(e.key === 'ArrowLeft') keys.left = true;
+    if(e.key === 'ArrowRight') keys.right = true;
+    if(e.key === ' '){
+      e.preventDefault();
+      if(ball && ball.stuck && state === 'running') launchBall();
+      else if(state === 'running') togglePause();
+      else if(state === 'paused') togglePause();
+    }
+  });
+  window.addEventListener('keyup', (e) => {
+    if(e.key === 'ArrowLeft') keys.left = false;
+    if(e.key === 'ArrowRight') keys.right = false;
+  });
+
+  function launchBall(){
+    ball.stuck = false;
+  }
+
+  // ---------- Overlays ----------
+  function show(el){ el.classList.remove('hidden'); }
+  function hide(el){ el.classList.add('hidden'); }
+
+  function goStart(){
+    state = 'start';
+    resetLevel(false);
+    hide(pauseOverlay); hide(loseOverlay); hide(winOverlay);
+    show(startOverlay);
+    draw();
+  }
+
+  function goRunning(){
+    state = 'running';
+    hide(startOverlay); hide(pauseOverlay); hide(loseOverlay); hide(winOverlay);
+  }
+
+  function togglePause(){
+    if(state === 'running'){
+      state = 'paused';
+      show(pauseOverlay);
+    } else if(state === 'paused'){
+      state = 'running';
+      hide(pauseOverlay);
+    }
+  }
+
+  function goLose(){
+    state = 'lose';
+    finalScore.textContent = score;
+    show(loseOverlay);
+  }
+
+  function goWin(){
+    state = 'win';
+    clearScore.textContent = score;
+    show(winOverlay);
+  }
+
+  startBtn.addEventListener('click', goRunning);
+  resumeBtn.addEventListener('click', togglePause);
+  pauseBtn.addEventListener('click', () => {
+    if(state === 'running' || state === 'paused') togglePause();
+  });
+  retryBtn.addEventListener('click', () => {
+    resetLevel(false);
+    goRunning();
+  });
+  nextBtn.addEventListener('click', () => {
+    level += 1;
+    paddle = makePaddle();
+    ball = makeBall();
+    bricks = makeBricks();
+    updateHud();
+    goRunning();
+  });
+
+  // ---------- Physics / update ----------
+  function update(dt){
+    // paddle movement
+    const kbSpeed = 9;
+    if(keys.left) paddle.x -= kbSpeed;
+    if(keys.right) paddle.x += kbSpeed;
+    if(targetX !== null){
+      paddle.x += (targetX - paddle.x) * 0.35;
+    }
+    paddle.x = Math.max(6, Math.min(W - paddle.w - 6, paddle.x));
+
+    if(ball.stuck){
+      ball.x = paddle.x + paddle.w/2;
+      ball.y = paddle.y - ball.r - 2;
+      return;
+    }
+
+    ball.trail.push({x:ball.x, y:ball.y});
+    if(ball.trail.length > 8) ball.trail.shift();
+
+    ball.x += ball.vx;
+    ball.y += ball.vy;
+
+    // wall collisions
+    if(ball.x - ball.r < 4){ ball.x = 4 + ball.r; ball.vx *= -1; }
+    if(ball.x + ball.r > W-4){ ball.x = W-4-ball.r; ball.vx *= -1; }
+    if(ball.y - ball.r < 4){ ball.y = 4 + ball.r; ball.vy *= -1; }
+
+    // paddle collision
+    if(ball.vy > 0 &&
+       ball.y + ball.r >= paddle.y &&
+       ball.y + ball.r <= paddle.y + paddle.h + 10 &&
+       ball.x >= paddle.x - ball.r &&
+       ball.x <= paddle.x + paddle.w + ball.r){
+      const hit = (ball.x - (paddle.x + paddle.w/2)) / (paddle.w/2); // -1..1
+      const speed = Math.hypot(ball.vx, ball.vy);
+      const angle = hit * (Math.PI/3); // max 60deg
+      ball.vx = speed * Math.sin(angle);
+      ball.vy = -Math.abs(speed * Math.cos(angle));
+      ball.y = paddle.y - ball.r - 1;
+    }
+
+    // brick collisions
+    for(const b of bricks){
+      if(!b.alive) continue;
+      if(ball.x + ball.r > b.x && ball.x - ball.r < b.x + b.w &&
+         ball.y + ball.r > b.y && ball.y - ball.r < b.y + b.h){
+        // determine collision side
+        const overlapLeft = (ball.x + ball.r) - b.x;
+        const overlapRight = (b.x + b.w) - (ball.x - ball.r);
+        const overlapTop = (ball.y + ball.r) - b.y;
+        const overlapBottom = (b.y + b.h) - (ball.y - ball.r);
+        const minOverlap = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom);
+        if(minOverlap === overlapTop || minOverlap === overlapBottom){
+          ball.vy *= -1;
+        } else {
+          ball.vx *= -1;
+        }
+        b.hp -= 1;
+        if(b.hp <= 0){
+          b.alive = false;
+          score += 10;
+          spawnParticles(b.x + b.w/2, b.y + b.h/2, b.color);
+        } else {
+          score += 5;
+        }
+        updateHud();
+        break;
+      }
+    }
+
+    // bottom -> lose life
+    if(ball.y - ball.r > H){
+      lives -= 1;
+      updateHud();
+      if(lives <= 0){
+        goLose();
+      } else {
+        ball = makeBall();
+      }
+    }
+
+    // win check
+    if(bricks.every(b => !b.alive)){
+      goWin();
+    }
+
+    // particles
+    for(const p of particles){
+      p.x += p.vx; p.y += p.vy; p.vy += 0.15; p.life -= 1;
+    }
+    particles = particles.filter(p => p.life > 0);
+  }
+
+  function spawnParticles(x, y, color){
+    for(let i=0;i<10;i++){
+      particles.push({
+        x, y,
+        vx: (Math.random()-0.5)*5,
+        vy: (Math.random()-0.5)*5 - 1,
+        life: 24 + Math.random()*10,
+        color
+      });
+    }
+  }
+
+  // ---------- Draw ----------
+  function roundRect(x,y,w,h,r){
+    ctx.beginPath();
+    ctx.moveTo(x+r,y);
+    ctx.arcTo(x+w,y,x+w,y+h,r);
+    ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r);
+    ctx.arcTo(x,y,x+w,y,r);
+    ctx.closePath();
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+
+    // bricks
+    for(const b of bricks){
+      if(!b.alive) continue;
+      ctx.save();
+      ctx.shadowColor = b.color;
+      ctx.shadowBlur = b.hp > 1 ? 14 : 8;
+      ctx.fillStyle = b.hp > 1 ? '#ffffff' : b.color;
+      ctx.globalAlpha = b.hp > 1 ? 0.95 : 1;
+      roundRect(b.x, b.y, b.w, b.h, 5);
+      ctx.fill();
+      if(b.hp > 1){
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = b.color;
+        ctx.lineWidth = 2;
+        roundRect(b.x+1, b.y+1, b.w-2, b.h-2, 4);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    // particles
+    for(const p of particles){
+      ctx.save();
+      ctx.globalAlpha = Math.max(p.life / 30, 0);
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 2.5, 0, Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // ball trail
+    for(let i=0;i<ball.trail.length;i++){
+      const t = ball.trail[i];
+      ctx.save();
+      ctx.globalAlpha = (i / ball.trail.length) * 0.35;
+      ctx.fillStyle = '#4ce0d2';
+      ctx.beginPath();
+      ctx.arc(t.x, t.y, ball.r*0.8, 0, Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // ball
+    ctx.save();
+    ctx.shadowColor = '#4ce0d2';
+    ctx.shadowBlur = 16;
+    ctx.fillStyle = '#f1f5f9';
+    ctx.beginPath();
+    ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+
+    // paddle
+    ctx.save();
+    const grad = ctx.createLinearGradient(paddle.x, 0, paddle.x + paddle.w, 0);
+    grad.addColorStop(0, '#4ce0d2');
+    grad.addColorStop(1, '#ff4d8d');
+    ctx.shadowColor = '#4ce0d2';
+    ctx.shadowBlur = 12;
+    ctx.fillStyle = grad;
+    roundRect(paddle.x, paddle.y, paddle.w, paddle.h, 7);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // ---------- Loop ----------
+  let last = performance.now();
+  function loop(now){
+    const dt = Math.min(32, now - last);
+    last = now;
+    if(state === 'running'){
+      update(dt);
+    }
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  function handleResize(){
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    const prevW = W, prevH = H;
+    layout();
+    if(paddle){
+      // rescale positions proportionally
+      const sx = prevW ? W / prevW : 1;
+      paddle.x *= sx;
+      paddle.y = H - 34;
+      if(ball && ball.stuck){
+        ball.x = paddle.x + paddle.w/2;
+        ball.y = paddle.y - ball.r - 2;
+      }
+    }
+  }
+
+  window.addEventListener('resize', handleResize);
+  window.addEventListener('orientationchange', () => setTimeout(handleResize, 150));
+
+  // ---------- Init ----------
+  layout();
+  resetLevel(false);
+  goStart();
+  requestAnimationFrame(loop);
+
+})();
+</script>
 </body>
 </html>
