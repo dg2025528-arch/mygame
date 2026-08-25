@@ -1,1 +1,94 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>벽돌깨기</title>
+    <link rel="stylesheet" href="style.css">
+</head>
 
+<body>
+
+<div class="game-container">
+
+    <h1>🧱 벽돌깨기</h1>
+
+    <div class="menu">
+        <button id="startBtn">게임 시작</button>
+        <button id="howBtn">게임 방법</button>
+    </div>
+
+    <div class="game-area">
+
+        <canvas id="gameCanvas" width="700" height="500"></canvas>
+
+        <div class="status">
+            <div>
+                <span>점수</span>
+                <strong id="score">0</strong>
+            </div>
+
+            <div>
+                <span>목숨</span>
+                <strong id="lives">3</strong>
+            </div>
+
+            <div>
+                <span>최고점수</span>
+                <strong id="highScore">0</strong>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="mobile-controls">
+        <button id="leftBtn">◀</button>
+        <button id="rightBtn">▶</button>
+    </div>
+
+</div>
+
+<!-- 게임 방법 -->
+<div id="howModal" class="modal">
+    <div class="modal-content">
+        <h2>🎮 게임 방법</h2>
+
+        <p>공을 튕겨서 위쪽의 벽돌을 모두 깨세요!</p>
+
+        <p>🖥️ 컴퓨터</p>
+        <p>← → 방향키로 막대를 움직입니다.</p>
+
+        <p>📱 모바일</p>
+        <p>화면 아래의 ◀ ▶ 버튼으로 움직입니다.</p>
+
+        <p>❤️ 목숨은 3개입니다.</p>
+        <p>공을 놓치면 목숨이 하나 줄어듭니다.</p>
+
+        <button id="closeHowBtn">닫기</button>
+    </div>
+</div>
+
+<!-- 게임 종료 -->
+<div id="gameOverModal" class="modal">
+    <div class="modal-content">
+        <h2>💥 게임 오버!</h2>
+        <p id="finalScore">점수: 0</p>
+        <button id="restartBtn">다시 시작</button>
+    </div>
+</div>
+
+<!-- 게임 클리어 -->
+<div id="clearModal" class="modal">
+    <div class="modal-content">
+        <h2>🎉 게임 클리어!</h2>
+        <p>모든 벽돌을 깨셨습니다!</p>
+        <p id="clearScore">점수: 0</p>
+
+        <button id="clearRestartBtn">다시 하기</button>
+    </div>
+</div>
+
+<script src="game.js"></script>
+
+</body>
+</html>
